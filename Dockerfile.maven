@@ -1,0 +1,36 @@
+# Stage 1: Compilación y ejecución de pruebas
+FROM maven:3.8.4-openjdk-8 AS build
+WORKDIR /app
+
+# Copia el archivo POM.xml y descarga las dependencias
+COPY pom.xml .
+
+# Copia el código fuente
+COPY src ./src
+
+# Compila y ejecuta las pruebas
+RUN mvn test
+
+# Compila el proyecto
+RUN mvn package
+
+# Stage 2: Construcción de la imagen final
+FROM openjdk:8-jdk-alpine
+
+# Copia el jar file generado en el container
+COPY --from=build /app/target/accenture-techhub-0.0.1-SNAPSHOT.war /app/app.war
+
+# Expone el puerto utilizado por el microservicio
+EXPOSE 8080
+
+# Definir las variables de entorno para la conexión de la base de datos:
+ENV SPRING_DATASOURCE_URL=jdbc:mysql://mysql-container:3306/accwe-hospital
+ENV SPRING_DATASOURCE_USERNAME=root
+ENV SPRING_DATASOURCE_PASSWORD=root
+
+# Esperar a que el contenedor de MySQL esté listo
+CMD ["sh", "-c", "while ! nc -z mysql-container 3306; do sleep 1; done"]
+
+# Define el comando de inicio del microservicio
+CMD ["java", "-jar", "/app/app.war"]
+
